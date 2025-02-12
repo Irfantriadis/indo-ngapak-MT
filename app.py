@@ -4,7 +4,7 @@ import time
 
 # Set the page config as the first Streamlit command
 st.set_page_config(
-    page_title="Indo-Ngapak Translator",
+    page_title="Indo-Ngapak Translator M-Bart",
     layout="centered"
 )
 
@@ -49,55 +49,45 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Load the dictionary model
+# Load word mapping model
 @st.cache_resource
 def load_model():
     with open('model/word_map_model.pkl', 'rb') as file:
         word_map = pickle.load(file)
     
     # Adding new translations
-    word_map.update({"aku": "nyong", "ke": "maring", "pergi": "lunga", "sama": "karo"})
+    word_map.update({"aku": "nyong", "ke": "maring", "pergi": "lunga", "sama": "karo", "mau": "gelem"})
     
-    # Generate reverse mapping (Ngapak to Indonesia)
-    reverse_word_map = {v: k for k, v in word_map.items()}
-    
-    return word_map, reverse_word_map
+    return word_map
 
-def translate_text(text, word_map):
-    """Function to handle the translation process"""
+word_map = load_model()
+
+# Function to translate input
+def flexible_translate(text, word_map):
     progress_bar = st.progress(0)
     status_text = st.empty()
     
-    # Simulate translation progress
     for i in range(100):
         time.sleep(0.01)
         progress_bar.progress(i + 1)
         status_text.text(f"Menerjemahkan... {i+1}%")
     
-    # Actual translation
-    words = text.lower().split()
-    translated_words = [word_map.get(word, word) for word in words]
-    translation = " ".join(translated_words)
+    translated_words = [word_map.get(word.lower(), word.lower()) for word in text.split()]
+    translation = " ".join(translated_words).lower()
     
-    # Remove progress bar and status text
     progress_bar.empty()
     status_text.empty()
     
     return translation
 
 def main():
-    st.title("Indo-Ngapak Translator M-Bart")
+    st.title("Indonesia ke Ngapak Translator M-Bart")
     st.markdown("""
     <div class='info-box'>
-    Pilih arah terjemahan dan masukkan teks yang ingin diterjemahkan, lalu klik tombol <b>Terjemahkan</b>.
+    Masukkan teks berbahasa Indonesia di bawah ini dan klik tombol <b>Terjemahkan</b> untuk 
+    mendapatkan hasil terjemahan ke Bahasa Ngapak.
     </div>
     """, unsafe_allow_html=True)
-
-    # Initialize model
-    word_map, reverse_word_map = load_model()
-
-    # Dropdown to select translation direction
-    translation_direction = st.selectbox("Pilih Arah Terjemahan", ["Indonesia ke Ngapak", "Ngapak ke Indonesia"])
 
     # Initialize session states
     if 'translation' not in st.session_state:
@@ -105,7 +95,10 @@ def main():
 
     # Input text area with character counter
     source_text = st.text_area(
-        "Masukkan teks", height=150, max_chars=512, help="Maksimal 512 karakter"
+        "Masukkan teks berbahasa Indonesia",
+        height=150,
+        max_chars=512,
+        help="Maksimal 512 karakter"
     )
     
     # Character counter
@@ -113,28 +106,24 @@ def main():
     st.caption(f"Sisa karakter: {remaining_chars}")
 
     def handle_translation():
-        """Callback function for the translate button"""
         if source_text.strip():
-            if translation_direction == "Indonesia ke Ngapak":
-                st.session_state.translation = translate_text(source_text, word_map)
-            else:
-                st.session_state.translation = translate_text(source_text, reverse_word_map)
+            st.session_state.translation = flexible_translate(source_text, word_map)
         else:
             st.warning("Harap masukkan teks untuk diterjemahkan.")
 
-    # Center the translate button with persistent text
+    # Center the translate button
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         st.button("Terjemahkan", on_click=handle_translation, use_container_width=True)
 
-    # Always display translation if it exists in session state
+    # Display translation result
     if st.session_state.translation:
-        st.markdown("""
+        st.markdown(f"""
             <div class='success-box'>
                 <h3 style='color: #ffffff;'>Hasil Terjemahan:</h3>
-                <p style='font-size: 1em;'>{}</p>
+                <p style='font-size: 1em;'>{st.session_state.translation}</p>
             </div>
-            """.format(st.session_state.translation), unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
     # Footer
     st.markdown("---")
